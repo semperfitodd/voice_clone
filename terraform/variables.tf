@@ -47,13 +47,6 @@ variable "region" {
   default = null
 }
 
-variable "sagemaker_instance_type" {
-  description = "Instance type for the SageMaker"
-  type        = string
-
-  default = null
-}
-
 variable "tags" {
   description = "Universal tags"
   type        = map(string)

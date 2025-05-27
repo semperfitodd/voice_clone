@@ -11,11 +11,15 @@
 
 # Local .terraform directories
 **/.terraform/*
+plan.out
 
 # Local code directories
 **/build/*
 **/builds/*
 **/node_modules/*
+static_site/voice_clone/.gitignore
+static_site/voice_clone/README.md
+static_site/voice_clone/src/assets/*
 
 # .tfstate static_site
 *.tfstate

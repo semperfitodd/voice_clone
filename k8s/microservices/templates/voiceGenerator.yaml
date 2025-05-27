@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.voiceGenerator.namespace }}
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.voiceGenerator.name }}-s3-pv
+  namespace: {{ .Values.voiceGenerator.namespace }}
+spec:
+  capacity:
+    storage: {{ .Values.global.s3.storage.size }}
+  volumeMode: Filesystem
+  accessModes:
+{{ toYaml .Values.global.s3.storage.accessModes | indent 4 }}
+  persistentVolumeReclaimPolicy: {{ .Values.global.s3.storage.reclaimPolicy }}
+  storageClassName: {{ .Values.global.s3.storage.storageClassName }}
+  csi:
+    driver: s3.csi.aws.com
+    volumeHandle: s3-csi-{{ .Values.voiceGenerator.name }}
+    volumeAttributes:
+      bucketName: {{ .Values.global.s3.bucketName }}
+      mounter: s3fs
+      authType: "pod"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.voiceGenerator.name }}-s3-pvc
+  namespace: {{ .Values.voiceGenerator.namespace }}
+spec:
+  accessModes:
+{{ toYaml .Values.global.s3.storage.accessModes | indent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.global.s3.storage.size }}
+  storageClassName: {{ .Values.global.s3.storage.storageClassName }}
+  volumeName: {{ .Values.voiceGenerator.name }}-s3-pv
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.voiceGenerator.name }}
+  namespace: {{ .Values.voiceGenerator.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.voiceGenerator.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.voiceGenerator.name }}
+    spec:
+      containers:
+        - name: {{ .Values.voiceGenerator.name }}
+          image: {{ .Values.voiceGenerator.image.repository }}:{{ .Values.voiceGenerator.image.tag }}
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: s3-volume
+              mountPath: /mount
+          resources:
+            requests:
+              cpu: "{{ .Values.voiceGenerator.resources.requests.cpu }}"
+              memory: "{{ .Values.voiceGenerator.resources.requests.memory }}"
+            limits:
+              cpu: "{{ .Values.voiceGenerator.resources.limits.cpu }}"
+              memory: "{{ .Values.voiceGenerator.resources.limits.memory }}"
+      volumes:
+        - name: s3-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.voiceGenerator.name }}-s3-pvc
+      nodeSelector:
+        gpu: {{ .Values.voiceGenerator.nodeSelector.gpu | quote }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.voiceGenerator.name }}-svc
+  namespace: {{ .Values.voiceGenerator.namespace }}
+spec:
+  selector:
+    app: {{ .Values.voiceGenerator.name }}
+  ports:
+    - port: 80
+      targetPort: 5000
+      protocol: TCP
+  type: ClusterIP

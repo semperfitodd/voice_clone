@@ -104,6 +104,11 @@ module "eks" {
         "nvidia.com/gpu.present" = true
       }
 
+      iam_role_additional_policies = {
+        AmazonSSMManagedInstanceCore = data.aws_iam_policy.AmazonSSMManagedInstanceCore.arn
+        eks_s3                       = aws_iam_policy.eks_s3.arn
+      }
+
       pre_bootstrap_user_data = <<-EOT
         #!/bin/bash
         set -ex
@@ -118,6 +123,8 @@ module "eks" {
         # Install the NVIDIA container runtime
         sudo yum install -y nvidia-container-toolkit
       EOT
+
+      tags = var.tags
     }
 
     (local.node_group_name) = {
