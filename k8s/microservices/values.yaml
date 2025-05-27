@@ -1,0 +1,51 @@
+global:
+  s3:
+    bucketName: cloud-financial-dashboard-sec-filings-r87t
+    storage:
+      size: 100Gi
+      accessModes:
+        - ReadWriteMany
+      reclaimPolicy: Retain
+      storageClassName: s3-sc
+
+  secret:
+    name: cloud-financial-dashboard-lambda-auth-secret
+
+secDownload:
+  name: sec-download
+  namespace: dashboard
+  image:
+    repository: 704855531002.dkr.ecr.us-east-1.amazonaws.com/cloud_financial_dashboard/sec_download
+    tag: '20250418114100'
+    pullPolicy: IfNotPresent
+  env:
+    ZIP_FILE_URL: https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip
+  schedule: "0 6 * * *"
+  resources:
+    requests:
+      cpu: "1"
+      memory: "4Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+
+sharedServices:
+  name: ubuntu-worker
+  namespace: dashboard
+  image:
+    repository: ubuntu
+    tag: "22.04"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "1"
+      memory: "4Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+  iamRole:
+    name: cloud_financial_dashboard_secrets_csi
+  secret:
+    jwtSecretKey: jwt_secret
+  secretProviderClass:
+    name: aws-secrets-provider
