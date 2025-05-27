@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://argoproj.github.io/argo-helm
     chart: argo-cd
-    targetRevision: 7.8.23
+    targetRevision: 8.0.10
     helm:
       parameters:
         - name: server.extraArgs[0]
