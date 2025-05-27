@@ -41,7 +41,6 @@ metadata:
   name: {{ .Values.ubuntuWorker.name }}-pod
   namespace: {{ .Values.ubuntuWorker.namespace }}
 spec:
-  serviceAccountName: {{ .Values.cobolmlpostgresql.name }}-sa
   restartPolicy: Always
   containers:
     - name: {{ .Values.ubuntuWorker.name }}
