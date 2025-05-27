@@ -1,0 +1,9 @@
+appEnvironments:
+  dev:
+    argoHostname: argocd-voice-clone.brewsentry.com
+    awsAccountNumber: '704855531002'
+    clusterName: voice-clone
+    environment: voice-clone
+    publicDomain: brewsentry.com
+    publicDomainId: Z02805682TXYB0368277R
+    repoUrl: https://github.com/semperfitodd/financial_dashboard.git

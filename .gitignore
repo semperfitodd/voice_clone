@@ -8,3 +8,15 @@
 # Inputs
 *.wav
 *.pth
+
+# Local .terraform directories
+**/.terraform/*
+
+# Local code directories
+**/build/*
+**/builds/*
+**/node_modules/*
+
+# .tfstate static_site
+*.tfstate
+*.tfstate.*
