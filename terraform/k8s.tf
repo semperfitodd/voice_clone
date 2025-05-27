@@ -38,7 +38,7 @@ locals {
 
 locals {
   k8s_domains = {
-    argo  = "argocd-${local.environment}.${var.domain}"
+    argo = "argocd-${local.environment}.${var.domain}"
   }
 
   validation_records = flatten([
