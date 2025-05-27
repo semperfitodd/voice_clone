@@ -1,7 +1,7 @@
 domain = "brewsentry.com"
 
 ecr_repos = {
-  voice_clone = "voice_clone"
+  tortoise = "tortoise"
 }
 
 eks_cluster_version = "1.32"

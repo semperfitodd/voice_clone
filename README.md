@@ -36,7 +36,7 @@ So there I am — middle of the night, production’s on fire, and the logs are 
 ### 1. Build the Docker Image
 
 ```bash
-docker build -t voice_clone .
+docker build -t tortoise .
 ```
 
 ### 2. Folder Structure (Host Side)
@@ -62,7 +62,7 @@ docker run --rm -v $(pwd)/inputs:/app/tortoise_app/tortoise/voices \
   -v $(pwd)/output:/app/outputs \
   -e TEXT="This is my real voice." \
   -e VOICE="<CUSTOM_VOICE>" \
-  voice_clone
+  tortoise
 ```
 
 This mounts:

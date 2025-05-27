@@ -11,6 +11,7 @@
 
 # Local .terraform directories
 **/.terraform/*
+plan.out
 
 # Local code directories
 **/build/*
