@@ -26,3 +26,22 @@ ubuntuWorker:
 
   nodeSelector:
     gpu: 'false'
+
+voiceGenerator:
+  name: voice-generator
+  namespace: default
+  image:
+    repository: 704855531002.dkr.ecr.us-east-1.amazonaws.com/voice_clone/tortoise
+    tag: 20250528093658
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+  nodeSelector:
+    gpu: 'true'

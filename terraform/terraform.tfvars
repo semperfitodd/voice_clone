@@ -14,6 +14,4 @@ environment = "voice_clone"
 
 region = "us-east-1"
 
-sagemaker_instance_type = "ml.t3.medium"
-
 vpc_cidr = "10.11.0.0/16"

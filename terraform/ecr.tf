@@ -39,9 +39,8 @@ resource "null_resource" "build_and_push_image" {
   for_each = var.ecr_repos
 
   triggers = {
-    app_py_hash     = filesha256("../docker/${each.key}/generate.py")
+    app_py_hash     = filesha256("../docker/${each.key}/app.py")
     dockerfile_hash = filesha256("../docker/${each.key}/Dockerfile")
-    entrypoint_hash = filesha256("../docker/${each.key}/entrypoint.sh")
   }
 
   provisioner "local-exec" {
