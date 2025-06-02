@@ -32,16 +32,13 @@ voiceGenerator:
   namespace: tortoise
   image:
     repository: 704855531002.dkr.ecr.us-east-1.amazonaws.com/voice_clone/tortoise
-    tag: '20250528164146'
+    tag: '20250603102104'
     pullPolicy: IfNotPresent
 
   resources:
     requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1"
+      memory: "4Gi"
 
   nodeSelector:
     gpu: 'true'

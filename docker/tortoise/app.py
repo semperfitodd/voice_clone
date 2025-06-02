@@ -1,15 +1,39 @@
+#!/usr/bin/env python
+
 import os
 import numpy as np
 import soundfile as sf
 import logging
+import torch
+from datetime import datetime
 from flask import Flask, request, jsonify
 from tortoise.api import TextToSpeech
 from tortoise.utils.audio import load_voice
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-app = Flask(__name__)
+mounted_input_dir = "/mount/inputs"
+tortoise_voice_dir = "/usr/local/lib/python3.10/dist-packages/tortoise/voices"
+
+if os.path.exists(mounted_input_dir):
+    if not os.path.islink(tortoise_voice_dir):
+        os.makedirs(os.path.dirname(tortoise_voice_dir), exist_ok=True)
+        if os.path.exists(tortoise_voice_dir):
+            os.rename(tortoise_voice_dir, tortoise_voice_dir + "_bak")
+        os.symlink(mounted_input_dir, tortoise_voice_dir)
+        logging.info(f"Symlink created: {tortoise_voice_dir} -> {mounted_input_dir}")
+else:
+    logging.warning(f"{mounted_input_dir} not found — skipping symlink setup. Likely volume mount issue.")
+
+if torch.cuda.is_available():
+    os.environ["TORCH_DEVICE"] = "cuda"
+    logging.info(f"CUDA Device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
+else:
+    os.environ["TORCH_DEVICE"] = "cpu"
+    logging.info("CUDA not available. Using CPU.")
+
 tts = TextToSpeech()
+app = Flask(__name__)
 
 @app.route("/synthesize", methods=["POST"])
 def synthesize():
@@ -22,17 +46,19 @@ def synthesize():
         return jsonify({"error": "Missing 'text' or 'voice' parameter"}), 400
 
     try:
-        voice_input_path = f"/app/{voice}/input/"
-        voice_output_path = f"/app/{voice}/output/"
-        output_file_path = os.path.join(voice_output_path, f"{voice}.wav")
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        voice_output_path = f"/mount/outputs/{voice}/"
+        output_filename = f"{voice}-{timestamp}.wav"
+        output_file_path = os.path.join(voice_output_path, output_filename)
+        tmp_file_path = f"/tmp/{output_filename}"
 
         os.makedirs(voice_output_path, exist_ok=True)
 
         os.environ["TORCH_DEVICE"] = "cuda" if tts.device.type == "cuda" else "cpu"
         logging.info(f"Using device: {os.environ['TORCH_DEVICE']}")
 
-        logging.info(f"Loading voice from {voice_input_path}")
-        voice_samples, conditioning_latents = load_voice(voice_input_path)
+        logging.info(f"Loading voice named '{voice}'")
+        voice_samples, conditioning_latents = load_voice(voice)
 
         logging.info("Starting synthesis")
         pcm_audio = tts.tts_with_preset(
@@ -50,7 +76,11 @@ def synthesize():
         )
 
         pcm_audio = np.squeeze(pcm_audio)
-        sf.write(output_file_path, pcm_audio, 22050)
+
+        sf.write(tmp_file_path, pcm_audio, 22050)
+        with open(tmp_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+        os.remove(tmp_file_path)
         logging.info(f"Synthesis complete. Output written to {output_file_path}")
 
         return jsonify({

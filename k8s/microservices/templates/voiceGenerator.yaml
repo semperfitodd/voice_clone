@@ -68,9 +68,6 @@ spec:
             requests:
               cpu: "{{ .Values.voiceGenerator.resources.requests.cpu }}"
               memory: "{{ .Values.voiceGenerator.resources.requests.memory }}"
-            limits:
-              cpu: "{{ .Values.voiceGenerator.resources.limits.cpu }}"
-              memory: "{{ .Values.voiceGenerator.resources.limits.memory }}"
       volumes:
         - name: s3-volume
           persistentVolumeClaim:
