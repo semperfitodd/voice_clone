@@ -55,7 +55,7 @@ module "api_gateway" {
   }
 
   routes = {
-    # "POST /generate" = {
+    # "POST /synthesize" = {
     #   authorization_type = "CUSTOM"
     #   authorizer_key     = "lambda"
     #   integration = {

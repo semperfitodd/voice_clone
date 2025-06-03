@@ -42,3 +42,5 @@ voiceGenerator:
 
   nodeSelector:
     gpu: 'true'
+
+  servicePort: 5000

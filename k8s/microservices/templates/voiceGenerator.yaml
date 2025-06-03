@@ -85,7 +85,32 @@ spec:
   selector:
     app: {{ .Values.voiceGenerator.name }}
   ports:
-    - port: 80
-      targetPort: 5000
+    - port: {{ .Values.voiceGenerator.servicePort }}
+      targetPort: {{ .Values.voiceGenerator.servicePort }}
       protocol: TCP
   type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.voiceGenerator.name }}-ingress
+  namespace: {{ .Values.voiceGenerator.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/ip-address-type: ipv4
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+    - host: "*.execute-api.us-east-1.amazonaws.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.voiceGenerator.name }}-svc
+                port:
+                  number: {{ .Values.voiceGenerator.servicePort }}
