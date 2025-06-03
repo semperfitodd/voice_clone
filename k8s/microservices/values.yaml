@@ -32,7 +32,7 @@ voiceGenerator:
   namespace: tortoise
   image:
     repository: 704855531002.dkr.ecr.us-east-1.amazonaws.com/voice_clone/tortoise
-    tag: '20250603102104'
+    tag: '20250603155334'
     pullPolicy: IfNotPresent
 
   resources:
@@ -44,3 +44,5 @@ voiceGenerator:
     gpu: 'true'
 
   servicePort: 5000
+
+  healthCheck: '/synthesize'

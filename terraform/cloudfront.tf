@@ -1,19 +1,18 @@
-data "aws_route53_zone" "public" {
-  name = var.domain
-
-  private_zone = false
-}
-
 locals {
   domain_name = "${local.environment}.${var.domain}"
+}
+
+# 1) Ensure you already have data.aws_route53_zone.public for var.domain
+data "aws_route53_zone" "public" {
+  name         = var.domain
+  private_zone = false
 }
 
 module "cdn" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "~> 4.1.0"
 
-  aliases = [local.domain_name]
-
+  aliases             = [local.domain_name]
   comment             = "${local.domain_name} Site CDN"
   enabled             = true
   is_ipv6_enabled     = true
@@ -34,37 +33,28 @@ module "cdn" {
   }
 
   origin = {
-    something = {
-      domain_name = local.domain_name
-      custom_origin_config = {
-        http_port                = 80
-        https_port               = 443
-        origin_keepalive_timeout = 5
-        origin_protocol_policy   = "match-viewer"
-        origin_ssl_protocols     = ["TLSv1.2"]
-      }
-    }
-
-    # api_gw = {
-    #   domain_name = replace(module.api_gateway.api_endpoint, "/^https?://([^/]*).*/", "$1")
-    #
-    #   custom_origin_config = {
-    #     http_port              = 80
-    #     https_port             = 443
-    #     origin_protocol_policy = "match-viewer"
-    #     origin_ssl_protocols   = ["TLSv1.2"]
-    #   }
-    # }
-
-    s3_one = {
+    s3_primary = {
       domain_name           = module.site_s3_bucket.s3_bucket_bucket_domain_name
       origin_access_control = local.domain_name
+    }
+
+    api_gw = {
+      domain_name = replace(module.api_gateway.api_endpoint, "/^https?://([^/]*).*/", "$1")
+      origin_custom_headers = {
+        Host = local.domain_name
+      }
+      custom_origin_config = {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "match-viewer"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
     }
   }
 
   default_cache_behavior = {
-    target_origin_id       = "something"
-    viewer_protocol_policy = "allow-all"
+    target_origin_id       = "s3_primary"
+    viewer_protocol_policy = "redirect-to-https"
 
     allowed_methods = ["GET", "HEAD", "OPTIONS"]
     cached_methods  = ["GET", "HEAD"]
@@ -73,31 +63,19 @@ module "cdn" {
   }
 
   ordered_cache_behavior = [
-    # {
-    #   path_pattern           = "/auth/*"
-    #   target_origin_id       = "api_gw"
-    #   viewer_protocol_policy = "redirect-to-https"
-    #
-    #   allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT", "PATCH"]
-    #   cached_methods  = ["GET", "HEAD"]
-    #   compress        = true
-    #   query_string    = true
-    #
-    #   forwarded_values = {
-    #     query_string = true
-    #     headers      = ["Authorization"]
-    #     cookies = {
-    #       forward = "none"
-    #     }
-    #   }
-    #
-    #   min_ttl     = 0
-    #   default_ttl = 0
-    #   max_ttl     = 0
-    # },
+    {
+      path_pattern           = "synthesize"
+      target_origin_id       = "api_gw"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT", "PATCH"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+    },
     {
       path_pattern           = "*"
-      target_origin_id       = "s3_one"
+      target_origin_id       = "s3_primary"
       viewer_protocol_policy = "redirect-to-https"
 
       allowed_methods = ["GET", "HEAD", "OPTIONS"]
@@ -114,6 +92,7 @@ module "cdn" {
 
   tags = var.tags
 }
+
 
 resource "aws_acm_certificate" "this" {
   domain_name       = local.domain_name

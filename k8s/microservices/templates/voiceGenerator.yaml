@@ -102,6 +102,7 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
     alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: {{ .Values.voiceGenerator.healthCheck }}
 spec:
   rules:
     - host: "*.execute-api.us-east-1.amazonaws.com"

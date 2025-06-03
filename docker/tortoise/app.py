@@ -35,8 +35,16 @@ else:
 tts = TextToSpeech()
 app = Flask(__name__)
 
-@app.route("/synthesize", methods=["POST"])
+
+@app.route("/synthesize", methods=["GET", "POST"])
 def synthesize():
+    if request.method == "GET":
+        return "Health check OK", 200
+
+    if not request.is_json:
+        logging.error("Unsupported content type for POST request")
+        return jsonify({"error": "Content-Type must be application/json"}), 415
+
     data = request.get_json()
     text = data.get("text")
     voice = data.get("voice")
@@ -90,6 +98,7 @@ def synthesize():
     except Exception as e:
         logging.exception("Error during synthesis")
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     logging.info("Starting Flask app on port 5000")

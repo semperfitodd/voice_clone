@@ -40,6 +40,13 @@ variable "environment" {
   default = null
 }
 
+variable "internal_lb_name_tortoise" {
+  description = "Internal load balancer name for tortoise ingress tag"
+  type        = string
+
+  default = null
+}
+
 variable "region" {
   description = "AWS region"
   type        = string

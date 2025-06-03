@@ -1,13 +1,13 @@
-# data "aws_lb" "api" {
-#   tags = {
-#     "ingress.k8s.aws/stack" = "${var.company}/flaskapp-${var.company}"
-#   }
-# }
-#
-# data "aws_lb_listener" "api" {
-#   load_balancer_arn = data.aws_lb.api.arn
-#   port              = 80
-# }
+data "aws_lb" "api" {
+  tags = {
+    "ingress.k8s.aws/stack" = var.internal_lb_name_tortoise
+  }
+}
+
+data "aws_lb_listener" "api" {
+  load_balancer_arn = data.aws_lb.api.arn
+  port              = 80
+}
 
 module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
@@ -17,16 +17,16 @@ module "api_gateway" {
   description   = "API Gateway for ${var.environment} environment"
   protocol_type = "HTTP"
 
-  # authorizers = {
-  #   lambda = {
-  #     authorizer_payload_format_version = "2.0"
-  #     authorizer_type                   = "REQUEST"
-  #     authorizer_uri                    = module.lambda_function_authorizor.lambda_function_invoke_arn
-  #     enable_simple_responses           = true
-  #     identity_sources                  = ["$request.header.Authorization"]
-  #     name                              = "lambda_authorizer"
-  #   }
-  # }
+  authorizers = {
+    lambda = {
+      authorizer_payload_format_version = "2.0"
+      authorizer_type                   = "REQUEST"
+      authorizer_uri                    = module.lambda_authorizer.lambda_function_invoke_arn
+      enable_simple_responses           = true
+      identity_sources                  = ["$request.header.x-api-key"]
+      name                              = "APIKeyAuthorizer"
+    }
+  }
 
   cors_configuration = {
     allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
@@ -55,25 +55,25 @@ module "api_gateway" {
   }
 
   routes = {
-    # "POST /synthesize" = {
-    #   authorization_type = "CUSTOM"
-    #   authorizer_key     = "lambda"
-    #   integration = {
-    #     connection_type = "VPC_LINK"
-    #     method          = "ANY"
-    #     type            = "HTTP_PROXY"
-    #     uri             = data.aws_lb_listener.api.arn
-    #     vpc_link_key    = "vpc"
-    #   }
-    # }
-    "$default" = {
-      # authorization_type = "CUSTOM"
-      # authorizer_key     = "lambda"
+    "POST /synthesize" = {
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda"
       integration = {
         connection_type = "VPC_LINK"
         method          = "ANY"
         type            = "HTTP_PROXY"
-        uri             = "arn:aws:elasticloadbalancing:us-east-1:704855531002:listener/app/k8s-argocd-argocdse-c15cb536ea/459d5787d4ef68fe/c3f385dcd0cc8a3d" # data.aws_lb_listener.api.arn
+        uri             = data.aws_lb_listener.api.arn
+        vpc_link_key    = "vpc"
+      }
+    }
+    "$default" = {
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda"
+      integration = {
+        connection_type = "VPC_LINK"
+        method          = "ANY"
+        type            = "HTTP_PROXY"
+        uri             = data.aws_lb_listener.api.arn
         vpc_link_key    = "vpc"
       }
     }
