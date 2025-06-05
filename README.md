@@ -1,100 +1,174 @@
-# Voice Clone with Tortoise
+# Voice Clone – Real-Time Speech Synthesis on Kubernetes
 
-Cloning my voice with Tortoise-TTS on Apple Silicon (Mac M1/M2 compatible, CPU-only)
+Welcome to **Voice Clone**, your one-stop shop for real-time, self-hosted voice synthesis powered by Tortoise TTS and Flask, fully automated with Terraform, ArgoCD, and Docker. Deploy the entire stack into Kubernetes and scale your voice.
 
----
-
-## 🎙️ Voice Recording Script
-
-Record at least 3–4 WAV files using the lines below. Each recording should be 10–20 seconds long, clean, and in a quiet space.
-
-Save them as:
-
-- `inputs/<CUSTOM_VOICE>/sample1.wav`
-- `inputs/<CUSTOM_VOICE>/sample2.wav`
-- ...
-
-### 🎧 Recording One - Conversational
-Hey there, I’m Todd. I live in a small lake community, love being outdoors, and I’m usually chasing my kids around their sports events. My job? I build tech that actually works — no fluff, just solid architecture. Most days I’m deep in cloud or AI, but right now, I’m cloning my voice for a little fun and a lot of future automation. I’m speaking casually here, like I would if we were sitting at a fire pit just catching up. This tone — this is me relaxed, low-key, no pressure, just real talk with a little bit of a smile.
-
-### 🎧 Recording Two - Professional/Confident
-Let’s talk business. When I walk into a room, I bring leadership, strategy, and execution. My philosophy is simple: the more I help others succeed, the more I succeed. I’ve built teams from the ground up, transformed legacy systems into serverless platforms, and led architecture for Fortune 100 companies. I believe in clarity, in moving fast, and in being direct. This voice? It’s the one I use when I’m presenting to executives or aligning teams across engineering, data, and delivery. Assertive, calm, and crystal clear.
-
-### 🎧 Recording Three - Expressive
-Can you believe how fast things are changing? I mean, we went from static websites to AI that writes code and voices in real time — it’s wild. Sometimes I stop and think about how far we’ve come, and it honestly blows my mind. The energy in this space is electric. There’s excitement, sure — but also a bit of anxiety. Are we doing this right? Are we building responsibly? That’s why I love this work — it’s human. It’s messy. It’s full of big wins and hard lessons. And that rollercoaster? I’m all in for the ride.
-
-### 🎧 Recording Four - Technical
-In a typical architecture, we decouple the frontend via S3 and CloudFront, API Gateway handles routing, and Lambda processes business logic. Behind that, DynamoDB stores state, and all services are secured via IAM roles scoped to the minimum permissions necessary. When running on Kubernetes, I prefer Helm for templating, ArgoCD for deployment, and use EFS for persistent workloads when needed. That’s not just jargon — it’s how we deliver scalable, cost-effective platforms. The key is speaking clearly — even with complex technical content.
-
-### 🎧 Recording Five - Storytelling
-So there I am — middle of the night, production’s on fire, and the logs are silent. Classic. Turns out, someone pushed a change that broke our entire event pipeline. I’m on a Zoom call, screensharing with four teams, and I say, “Look, we’re not guessing. We’re going to trace this with Datadog and find the root cause.” Twenty minutes later, we spot it — cold-start latency from a misconfigured Lambda. Fixed it, postmortem documented, and I got two hours of sleep. Not glamorous, but that’s the job — and honestly, I live for this stuff.
+Live Demo: [https://voice-clone.brewsentry.com](https://voice-clone.brewsentry.com)
 
 ---
 
-## 🐳 Docker Instructions
+## 📚 Table of Contents
 
-### 1. Build the Docker Image
+- [Voice Clone – Real-Time Speech Synthesis on Kubernetes](#️-voice-clone--real-time-speech-synthesis-on-kubernetes)
+- [What This Does](#what-this-does)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [How to Deploy](#how-to-deploy)
+  - [1. Clone This Repo](#1-clone-this-repo)
+  - [2. Deploy the Infra with Terraform](#2-deploy-the-infra-with-terraform)
+  - [3. Build and Push the Docker Image](#3-build-and-push-the-docker-image)
+  - [4. Bootstrap ArgoCD](#4-bootstrap-argocd)
+  - [5. Let ArgoCD Deploy Everything](#5-let-argocd-deploy-everything)
+- [Example Usage](#-example-usage)
+- [Screenshot](#screenshot)
+- [Credits](#credits)
+- [Built by Todd Bernson](#built-by-todd-bernson)
 
-```bash
-docker build -t tortoise .
+---
+
+## What This Does
+
+- Converts text into hyper-realistic speech using [Tortoise TTS](https://github.com/neonbjb/tortoise-tts)
+- Packs it all into a Docker container running Flask
+- Deploys to a K8s cluster using **ArgoCD**, which then **self-manages**
+- Uses Terraform to provision **S3, IAM, ECR, EKS**, and all needed AWS resources
+- Automates everything from infrastructure to app deployment
+
+---
+
+## Architecture
+
+```text
+Terraform → AWS Infra (EKS, S3, ECR, IAM)
+↓
+Docker (Flask + Tortoise TTS)
+↓
+ArgoCD (bootstrap + self-manage)
+↓
+Kubernetes (Flask App + Ingress)
 ```
+---
 
-### 2. Folder Structure (Host Side)
+## Tech Stack
 
-```bash
-.
-├── Dockerfile
-├── inputs/
-│   └── <CUSTOM_VOICE>/
-│       ├── sample1.wav
-│       └── sample2.wav
-├── output/
-```
+- [x] Terraform (infra as code)
+- [x] Tortoise TTS (voice cloning)
+- [x] Flask (API layer)
+- [x] Docker (containerization)
+- [x] ArgoCD (GitOps magic)
+- [x] Kubernetes (orchestration)
 
-![input_files.png](img/input_files.png)
+---
 
-### 3. Run the Container Non-Interactively with Mounted Folders
+## How to Deploy
 
-Set environment variables for your custom voice folder and the text you want to synthesize.
+### 1. Clone This Repo
 
 ```bash
-docker run --rm -v $(pwd)/inputs:/app/tortoise_app/tortoise/voices \
-  -v $(pwd)/output:/app/outputs \
-  -e TEXT="This is my real voice." \
-  -e VOICE="<CUSTOM_VOICE>" \
-  tortoise
-```
-
-This mounts:
-- `inputs/` → inside the container as `/app/tortoise_app/tortoise/voices`
-- So `inputs/todd/` becomes available as the `todd` voice
-- `output/` → receives the generated `.wav` files from the TTS process
-
-The container runs, generates the audio file, and exits cleanly.
-
-### 4. Example Output
-
-```bash
-Generating speech for voice: todd
-Generating autoregressive samples..
-100%|██████████| 64/64 [1:52:19<00:00, 105.31s/it]
-Computing best candidates using CLVP
-100%|██████████| 64/64 [01:53<00:00,  1.78s/it]
-Transforming autoregressive outputs into audio..
-100%|██████████| 400/400 [12:19<00:00,  1.85s/it]
-Synthesis complete → /app/outputs/todd.wav
-Synthesis complete
+git clone https://github.com/semperfitodd/voice_clone.git
+cd voice_clone
 ```
 
 ---
 
-## ✅ Tips
+### 2. Deploy the Infra with Terraform
 
-- Make sure audio files are **mono**, **16-bit PCM**, and **22050 Hz** sample rate.
-  Convert with:
-  ```bash
-  ffmpeg -i input.wav -ar 22050 -ac 1 -sample_fmt s16 input.wav
-  ```
-- You can mount additional folders and generate other voices by using the same folder structure.
+Make sure you have AWS credentials set via `aws configure` or env vars.
+
+```bash
+cd terraform
+terraform init
+terraform apply -auto-approve
+```
+
+This sets up:
+- EKS Cluster
+- ECR Repo
+- S3 Bucket (optional)
+- IAM Roles
 
 ---
+
+### 3. Build and Push the Docker Image
+
+This is done automatically by Terraform, but you can also do it manually:
+
+```bash
+cd docker
+docker build -t voice-clone .
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <your_ecr_url>
+docker tag voice-clone <your_ecr_url>/voice-clone
+docker push <your_ecr_url>/voice-clone
+```
+
+---
+
+### 4. Bootstrap ArgoCD
+
+ArgoCD is deployed **via Terraform**, and will self-manage after initial install.
+
+Get the ArgoCD login credentials and open the UI:
+
+```bash
+kubectl get pods -n argocd
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+Then go to: [https://localhost:8080](https://localhost:8080)
+
+Username: `admin`  
+Password: Get it with:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+---
+
+### 5. Let ArgoCD Deploy Everything
+
+Once ArgoCD is live, it will detect changes to the repo and handle all Kubernetes deployments:
+- Flask app
+- Service
+- Ingress
+- Tortoise TTS pod
+- Any future enhancements 🔁
+
+---
+
+## Example Usage
+
+POST to `/synthesize` with JSON:
+
+```json
+{
+  "text": "Welcome to Voice Clone",
+  "voice": "pat"
+}
+```
+
+This will save the audio file in the S3 bucket.
+
+---
+
+## Screenshot
+
+![website_0.png](img/website_0.png)
+
+![website_1.png](img/website_1.png)
+
+---
+
+## Credits
+
+- [Tortoise TTS](https://github.com/neonbjb/tortoise-tts)
+- [Flask](https://flask.palletsprojects.com/)
+- [ArgoCD](https://argo-cd.readthedocs.io/)
+- [Terraform](https://www.terraform.io/)
+
+---
+
+## Built by Todd Bernson
+
+AWS Ambassador | DevOps Nerd | Real-time ML Enthusiast  
+[todd.bernson.info](https://todd.bernson.info) | [LinkedIn](https://www.linkedin.com/in/todd-bernson/)
+
