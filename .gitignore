@@ -24,3 +24,6 @@ static_site/voice_clone/src/assets/*
 # .tfstate static_site
 *.tfstate
 *.tfstate.*
+
+# Secrets
+.env.local

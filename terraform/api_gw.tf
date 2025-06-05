@@ -66,6 +66,17 @@ module "api_gateway" {
         vpc_link_key    = "vpc"
       }
     }
+    "GET /outputs" = {
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda"
+      integration = {
+        connection_type = "VPC_LINK"
+        method          = "ANY"
+        type            = "HTTP_PROXY"
+        uri             = data.aws_lb_listener.api.arn
+        vpc_link_key    = "vpc"
+      }
+    }
     "POST /synthesize" = {
       authorization_type = "CUSTOM"
       authorizer_key     = "lambda"

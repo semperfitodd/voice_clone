@@ -32,7 +32,7 @@ voiceGenerator:
   namespace: tortoise
   image:
     repository: 704855531002.dkr.ecr.us-east-1.amazonaws.com/voice_clone/tortoise
-    tag: '20250605122106'
+    tag: '20250605155511'
     pullPolicy: IfNotPresent
 
   resources:

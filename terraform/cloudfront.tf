@@ -74,6 +74,26 @@ module "cdn" {
       query_string    = true
     },
     {
+      path_pattern           = "outputs"
+      target_origin_id       = "api_gw"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT", "PATCH"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = true
+    },
+    {
+      path_pattern           = "outputs/*"
+      target_origin_id       = "api_gw"
+      viewer_protocol_policy = "redirect-to-https"
+
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      cached_methods  = ["GET", "HEAD"]
+      compress        = true
+      query_string    = false
+    },
+    {
       path_pattern           = "synthesize"
       target_origin_id       = "api_gw"
       viewer_protocol_policy = "redirect-to-https"
@@ -102,7 +122,6 @@ module "cdn" {
 
   tags = var.tags
 }
-
 
 resource "aws_acm_certificate" "this" {
   domain_name       = local.domain_name

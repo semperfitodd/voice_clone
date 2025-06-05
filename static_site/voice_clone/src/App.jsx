@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {useState} from 'react';
 import LandingPage from './screens/LandingPage';
 
-function App() {
-  return <LandingPage />;
-}
+export default function App() {
+    const [email, setEmail] = useState(null);
 
-export default App;
+    return <LandingPage email={email} setEmail={setEmail}/>;
+}
