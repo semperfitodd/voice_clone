@@ -45,7 +45,7 @@ module "lambda_authorizer" {
 }
 
 resource "aws_secretsmanager_secret" "api_key" {
-  name        = "${var.environment}_api_key"
+  name        = "${var.environment}_api_key_${random_string.this.result}"
   description = "${local.environment} API key"
 
   tags = var.tags
@@ -68,4 +68,6 @@ resource "random_string" "api" {
   numeric = true
   special = true
   upper   = true
+
+  override_special = "!@#%^*-_=+[]{}<>?,./:|~"
 }
