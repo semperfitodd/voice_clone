@@ -55,6 +55,17 @@ module "api_gateway" {
   }
 
   routes = {
+    "POST /input" = {
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda"
+      integration = {
+        connection_type = "VPC_LINK"
+        method          = "ANY"
+        type            = "HTTP_PROXY"
+        uri             = data.aws_lb_listener.api.arn
+        vpc_link_key    = "vpc"
+      }
+    }
     "POST /synthesize" = {
       authorization_type = "CUSTOM"
       authorizer_key     = "lambda"

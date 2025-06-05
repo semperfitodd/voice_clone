@@ -12,18 +12,9 @@ from tortoise.utils.audio import load_voice
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-mounted_input_dir = "/mount/inputs"
 tortoise_voice_dir = "/usr/local/lib/python3.10/dist-packages/tortoise/voices"
 
-if os.path.exists(mounted_input_dir):
-    if not os.path.islink(tortoise_voice_dir):
-        os.makedirs(os.path.dirname(tortoise_voice_dir), exist_ok=True)
-        if os.path.exists(tortoise_voice_dir):
-            os.rename(tortoise_voice_dir, tortoise_voice_dir + "_bak")
-        os.symlink(mounted_input_dir, tortoise_voice_dir)
-        logging.info(f"Symlink created: {tortoise_voice_dir} -> {mounted_input_dir}")
-else:
-    logging.warning(f"{mounted_input_dir} not found — skipping symlink setup. Likely volume mount issue.")
+os.makedirs(tortoise_voice_dir, exist_ok=True)
 
 if torch.cuda.is_available():
     os.environ["TORCH_DEVICE"] = "cuda"
@@ -34,7 +25,6 @@ else:
 
 tts = TextToSpeech()
 app = Flask(__name__)
-
 
 @app.route("/synthesize", methods=["GET", "POST"])
 def synthesize():
@@ -53,20 +43,35 @@ def synthesize():
         logging.error("Missing 'text' or 'voice' parameter")
         return jsonify({"error": "Missing 'text' or 'voice' parameter"}), 400
 
+    safe_email = voice.strip().lower().replace("/", "_").replace("..", "_")
+    user_inputs_dir = os.path.join("/mount", safe_email, "inputs")
+    user_outputs_dir = os.path.join("/mount", safe_email, "outputs")
+
+    voice_symlink_path = os.path.join(tortoise_voice_dir, safe_email)
+    if os.path.isdir(user_inputs_dir):
+        if not os.path.islink(voice_symlink_path):
+            try:
+                os.symlink(user_inputs_dir, voice_symlink_path)
+                logging.info(f"Symlink created: {voice_symlink_path} -> {user_inputs_dir}")
+            except Exception as e:
+                logging.error(f"Failed to create symlink for voice '{safe_email}': {e}")
+                return jsonify({"error": f"Voice directory setup failed: {str(e)}"}), 500
+    else:
+        logging.error(f"User inputs directory not found: {user_inputs_dir}")
+        return jsonify({"error": f"No inputs found for '{safe_email}'"}), 404
+
     try:
         timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-        voice_output_path = f"/mount/outputs/{voice}/"
-        output_filename = f"{voice}-{timestamp}.wav"
-        output_file_path = os.path.join(voice_output_path, output_filename)
+        os.makedirs(user_outputs_dir, exist_ok=True)
+        output_filename = f"{safe_email}-{timestamp}.wav"
+        output_file_path = os.path.join(user_outputs_dir, output_filename)
         tmp_file_path = f"/tmp/{output_filename}"
-
-        os.makedirs(voice_output_path, exist_ok=True)
 
         os.environ["TORCH_DEVICE"] = "cuda" if tts.device.type == "cuda" else "cpu"
         logging.info(f"Using device: {os.environ['TORCH_DEVICE']}")
 
-        logging.info(f"Loading voice named '{voice}'")
-        voice_samples, conditioning_latents = load_voice(voice)
+        logging.info(f"Loading voice samples for '{safe_email}'")
+        voice_samples, conditioning_latents = load_voice(safe_email)
 
         logging.info("Starting synthesis")
         pcm_audio = tts.tts_with_preset(
@@ -99,6 +104,72 @@ def synthesize():
         logging.exception("Error during synthesis")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/input", methods=["POST"])
+def receive_inputs():
+    """
+    Expects a multipart/form-data POST with:
+      • form-field “email” (e.g. “alice@example.com”)
+      • one or more form-field “file” entries, each a .wav
+    Saves files under /mount/{email}/inputs/ as {email}_0.wav, {email}_1.wav, etc.
+    """
+    if not request.content_type.startswith("multipart/form-data"):
+        logging.error("Unsupported content type for POST /input")
+        return jsonify({"error": "Content-Type must be multipart/form-data"}), 415
+
+    email = request.form.get("email", "").strip().lower()
+    if not email:
+        logging.error("Missing 'email' field in /input")
+        return jsonify({"error": "Missing 'email' field"}), 400
+
+    safe_email = email.replace("/", "_").replace("..", "_")
+    user_inputs_dir = os.path.join("/mount", safe_email, "inputs")
+
+    try:
+        os.makedirs(user_inputs_dir, exist_ok=True)
+    except Exception as e:
+        logging.exception("Could not create user inputs directory")
+        return jsonify({"error": str(e)}), 500
+
+    wav_files = request.files.getlist("file")
+    if not wav_files:
+        logging.error("No 'file' fields found in /input")
+        return jsonify({"error": "No 'file' fields provided"}), 400
+
+    saved_paths = []
+    existing = [
+        fname for fname in os.listdir(user_inputs_dir)
+        if fname.startswith(f"{safe_email}_") and fname.lower().endswith(".wav")
+    ]
+    existing_indices = []
+    for fname in existing:
+        try:
+            idx = int(fname.replace(f"{safe_email}_", "").replace(".wav", ""))
+            existing_indices.append(idx)
+        except ValueError:
+            continue
+    next_index = max(existing_indices) + 1 if existing_indices else 0
+
+    for wav in wav_files:
+        filename = wav.filename or ""
+        if not filename.lower().endswith(".wav"):
+            logging.warning(f"Skipping non-wav file: {filename}")
+            continue
+
+        dest_name = f"{safe_email}_{next_index}.wav"
+        dest_path = os.path.join(user_inputs_dir, dest_name)
+        try:
+            wav.save(dest_path)
+            saved_paths.append(dest_path)
+            logging.info(f"Saved {filename} → {dest_path}")
+            next_index += 1
+        except Exception as e:
+            logging.exception(f"Failed to save {filename}")
+            return jsonify({"error": f"Failed to save {filename}: {str(e)}"}), 500
+
+    return jsonify({
+        "message": f"Saved {len(saved_paths)} file(s) for {safe_email}",
+        "saved_files": saved_paths
+    }), 201
 
 if __name__ == "__main__":
     logging.info("Starting Flask app on port 5000")
