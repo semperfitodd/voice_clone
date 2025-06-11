@@ -27,7 +27,7 @@ export default function RecordButton({email}) {
             form.append('file', blob, `${email.replace(/[@.]/g, '_')}_${Date.now()}.wav`);
 
             try {
-                const res = await fetch('https://voice-clone.brewsentry.com/input', {
+                const res = await fetch(import.meta.env.VITE_API_INPUT_URL, {
                     method: 'POST',
                     headers: {
                         'x-api-key': import.meta.env.VITE_TTS_API_KEY,

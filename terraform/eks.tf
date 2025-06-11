@@ -76,7 +76,8 @@ module "eks" {
   eks_managed_node_groups = {
     (local.node_group_name_gpu) = {
       ami_type       = "AL2_x86_64_GPU"
-      instance_types = [var.eks_node_gpu_instance_type]
+      instance_types = var.eks_node_gpu_instance_type
+      #capacity_type  = "SPOT"
 
       min_size     = 1
       max_size     = 3
@@ -129,7 +130,8 @@ module "eks" {
 
     (local.node_group_name) = {
       ami_type       = "AL2_x86_64"
-      instance_types = [var.eks_node_instance_type]
+      instance_types = var.eks_node_instance_type
+      capacity_type  = "SPOT"
 
       min_size     = 1
       max_size     = 5

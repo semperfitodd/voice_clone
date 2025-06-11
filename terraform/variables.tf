@@ -21,16 +21,16 @@ variable "eks_cluster_version" {
 
 variable "eks_node_instance_type" {
   description = "EC2 instance type for worker nodes"
-  type        = string
+  type        = list(string)
 
-  default = null
+  default = []
 }
 
 variable "eks_node_gpu_instance_type" {
   description = "EC2 instance type for GPU worker nodes"
-  type        = string
+  type        = list(string)
 
-  default = null
+  default = []
 }
 
 variable "environment" {
