@@ -9,8 +9,8 @@ eks_cluster_version = "1.32"
 eks_node_instance_type = ["t3.medium"]
 
 eks_node_gpu_instance_type = [
-  "g4dn.xlarge",
   "g5.xlarge",
+  "g4dn.xlarge",
 ]
 
 environment = "voice_clone"
