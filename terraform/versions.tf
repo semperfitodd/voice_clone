@@ -3,7 +3,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "eks_cobol"
+      Project     = "voice_clone"
       Owners      = "Todd"
       Provisioner = "Terraform"
     }
