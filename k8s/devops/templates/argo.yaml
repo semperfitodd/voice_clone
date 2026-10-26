@@ -8,11 +8,12 @@ spec:
   source:
     repoURL: https://argoproj.github.io/argo-helm
     chart: argo-cd
-    targetRevision: 8.0.10
+    targetRevision: 10.9.2
     helm:
-      parameters:
-        - name: server.extraArgs[0]
-          value: --insecure
+      values: |-
+        configs:
+          params:
+            server.insecure: "true"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

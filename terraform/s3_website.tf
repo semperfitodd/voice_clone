@@ -36,7 +36,7 @@ locals {
 
 module "site_s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "4.9.0"
+  version = "~> 5.16.1"
 
   bucket = local.domain_name
 
@@ -75,4 +75,30 @@ resource "aws_s3_object" "website_object" {
   content_type = lookup(local.mime_types, split(".", each.value)[length(split(".", each.value)) - 1])
 
   tags = var.tags
+}
+
+resource "aws_s3_object" "site_config" {
+  bucket       = module.site_s3_bucket.s3_bucket_id
+  key          = "config.js"
+  content_type = "application/javascript"
+  content = templatefile("${path.module}/templates/config.js.tpl", {
+    auth_domain  = local.auth_domain
+    client_id    = aws_cognito_user_pool_client.main.id
+    logout_uri   = "${local.site_url}/logout"
+    redirect_uri = "${local.site_url}/auth/callback"
+    region       = var.region
+    user_pool_id = aws_cognito_user_pool.main.id
+  })
+  etag = md5(templatefile("${path.module}/templates/config.js.tpl", {
+    auth_domain  = local.auth_domain
+    client_id    = aws_cognito_user_pool_client.main.id
+    logout_uri   = "${local.site_url}/logout"
+    redirect_uri = "${local.site_url}/auth/callback"
+    region       = var.region
+    user_pool_id = aws_cognito_user_pool.main.id
+  }))
+
+  tags = var.tags
+
+  depends_on = [aws_cognito_user_pool_client.main]
 }

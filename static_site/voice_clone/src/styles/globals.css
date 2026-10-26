@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .page-center {
+    @apply min-h-screen flex flex-col items-center justify-center px-4 text-center relative;
+  }
+
+  .btn {
+    @apply px-6 py-3 rounded-xl shadow transition font-medium;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1 text-sm rounded-lg;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-lg rounded-xl shadow-lg;
+  }
+
+  .btn-primary {
+    @apply bg-purple-600 text-white hover:bg-purple-700;
+  }
+
+  .btn-success {
+    @apply bg-green-600 text-white hover:bg-green-700;
+  }
+
+  .btn-warning {
+    @apply bg-yellow-500 text-white hover:bg-yellow-600;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .btn-info {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+
+  .btn-disabled {
+    @apply bg-gray-300 text-white cursor-not-allowed;
+  }
+
+  .btn-back {
+    @apply absolute top-4 left-4 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400;
+  }
+
+  .textarea-field {
+    @apply w-full max-w-xl p-4 border border-gray-300 rounded-lg mb-4;
+  }
+
+  .output-row {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .output-row-main {
+    @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 w-full sm:w-auto;
+  }
+
+  .output-filename {
+    @apply break-all text-left text-sm text-gray-700;
+  }
+}

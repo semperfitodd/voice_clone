@@ -74,3 +74,15 @@ variable "vpc_redundancy" {
 
   default = false
 }
+
+variable "cognito_google_client_id" {
+  description = "Google OAuth 2.0 client ID for Cognito identity provider"
+  type        = string
+  sensitive   = true
+}
+
+variable "cognito_google_client_secret" {
+  description = "Google OAuth 2.0 client secret for Cognito identity provider"
+  type        = string
+  sensitive   = true
+}

@@ -2,6 +2,9 @@
 .idea
 .iml
 
+# Python
+**/__pycache__/
+
 # Mac OS
 .DS_Store
 
@@ -25,5 +28,14 @@ static_site/voice_clone/src/assets/*
 *.tfstate
 *.tfstate.*
 
-# Secrets
+# Secrets and local env
+.env
+.env.*
 .env.local
+*.auto.tfvars
+
+# Frontend build and local runtime config
+static_site/voice_clone/dist/
+static_site/voice_clone/public/config.js
+architecture/node_modules/
+docker/tortoise/.venv/

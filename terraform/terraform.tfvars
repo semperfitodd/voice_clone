@@ -4,7 +4,7 @@ ecr_repos = {
   tortoise = "tortoise"
 }
 
-eks_cluster_version = "1.32"
+eks_cluster_version = "1.37"
 
 eks_node_instance_type = ["t3.medium"]
 

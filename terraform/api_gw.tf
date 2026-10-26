@@ -9,29 +9,60 @@ data "aws_lb_listener" "api" {
   port              = 80
 }
 
+locals {
+  api_integration = {
+    connection_type = "VPC_LINK"
+    method          = "ANY"
+    type            = "HTTP_PROXY"
+    uri             = data.aws_lb_listener.api.arn
+    vpc_link_key    = "vpc"
+  }
+
+  api_route_keys = [
+    "POST /input",
+    "POST /synthesize",
+    "GET /outputs",
+    "GET /outputs/{proxy+}",
+  ]
+
+  api_routes = {
+    for route_key in local.api_route_keys : route_key => {
+      authorization_type = "JWT"
+      authorizer_key     = "cognito"
+      integration        = local.api_integration
+    }
+  }
+
+  cognito_issuer = "https://${aws_cognito_user_pool.main.endpoint}"
+}
+
 module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
-  version = "~> 5.3.0"
+  version = "~> 5.4.0"
 
   name          = var.environment
   description   = "API Gateway for ${var.environment} environment"
   protocol_type = "HTTP"
 
   authorizers = {
-    lambda = {
-      authorizer_payload_format_version = "2.0"
-      authorizer_type                   = "REQUEST"
-      authorizer_uri                    = module.lambda_authorizer.lambda_function_invoke_arn
-      enable_simple_responses           = true
-      identity_sources                  = ["$request.header.x-api-key"]
-      name                              = "APIKeyAuthorizer"
+    cognito = {
+      authorizer_type  = "JWT"
+      identity_sources = ["$request.header.Authorization"]
+      name             = "CognitoJWT"
+      jwt_configuration = {
+        audience = [aws_cognito_user_pool_client.main.id]
+        issuer   = local.cognito_issuer
+      }
     }
   }
 
   cors_configuration = {
-    allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
-    allow_methods = ["*"]
-    allow_origins = ["*"] #["https://${local.site_domain}"]
+    allow_headers = ["authorization", "content-type"]
+    allow_methods = ["GET", "OPTIONS", "POST"]
+    allow_origins = [
+      "https://${local.domain_name}",
+      "http://localhost:5173",
+    ]
   }
 
   create_certificate    = false
@@ -54,52 +85,7 @@ module "api_gateway" {
     throttling_rate_limit    = 50
   }
 
-  routes = {
-    "POST /input" = {
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda"
-      integration = {
-        connection_type = "VPC_LINK"
-        method          = "ANY"
-        type            = "HTTP_PROXY"
-        uri             = data.aws_lb_listener.api.arn
-        vpc_link_key    = "vpc"
-      }
-    }
-    "GET /outputs" = {
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda"
-      integration = {
-        connection_type = "VPC_LINK"
-        method          = "ANY"
-        type            = "HTTP_PROXY"
-        uri             = data.aws_lb_listener.api.arn
-        vpc_link_key    = "vpc"
-      }
-    }
-    "POST /synthesize" = {
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda"
-      integration = {
-        connection_type = "VPC_LINK"
-        method          = "ANY"
-        type            = "HTTP_PROXY"
-        uri             = data.aws_lb_listener.api.arn
-        vpc_link_key    = "vpc"
-      }
-    }
-    "$default" = {
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda"
-      integration = {
-        connection_type = "VPC_LINK"
-        method          = "ANY"
-        type            = "HTTP_PROXY"
-        uri             = data.aws_lb_listener.api.arn
-        vpc_link_key    = "vpc"
-      }
-    }
-  }
+  routes = local.api_routes
 
   vpc_links = {
     vpc = {
@@ -110,6 +96,8 @@ module "api_gateway" {
   }
 
   tags = var.tags
+
+  depends_on = [aws_cognito_user_pool_client.main]
 }
 
 resource "aws_security_group" "apigw_vpc_link" {

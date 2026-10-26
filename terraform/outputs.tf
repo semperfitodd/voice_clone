@@ -17,3 +17,18 @@ output "public_domain_id" {
 output "s3_bucket_name" {
   value = module.s3_bucket_eks.s3_bucket_id
 }
+
+output "cognito_client_id" {
+  description = "Cognito app client ID for application configuration"
+  value       = aws_cognito_user_pool_client.main.id
+}
+
+output "cognito_domain" {
+  description = "Cognito custom auth domain"
+  value       = "https://${local.auth_domain}"
+}
+
+output "cognito_user_pool_id" {
+  description = "Cognito user pool ID for application configuration"
+  value       = aws_cognito_user_pool.main.id
+}

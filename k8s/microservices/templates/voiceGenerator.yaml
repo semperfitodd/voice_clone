@@ -61,6 +61,13 @@ spec:
           image: {{ .Values.voiceGenerator.image.repository }}:{{ .Values.voiceGenerator.image.tag }}
           ports:
             - containerPort: 5000
+          env:
+            - name: COGNITO_CLIENT_ID
+              value: {{ .Values.voiceGenerator.cognito.clientId | quote }}
+            - name: COGNITO_REGION
+              value: {{ .Values.voiceGenerator.cognito.region | quote }}
+            - name: COGNITO_USER_POOL_ID
+              value: {{ .Values.voiceGenerator.cognito.userPoolId | quote }}
           volumeMounts:
             - name: s3-volume
               mountPath: /mount

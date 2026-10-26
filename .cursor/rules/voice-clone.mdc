@@ -1,0 +1,33 @@
+---
+description: Voice Clone repository conventions for auth, styling, storage, and architecture diagrams.
+alwaysApply: true
+---
+
+# Voice Clone
+
+## Authentication
+
+- Browser sign-in uses Cognito hosted UI with Google federation (`auth.<domain>`), PKCE, and `/auth/callback`.
+- Runtime Cognito settings come from `config.js` (Terraform writes production `config.js` to the site bucket; local dev uses gitignored `public/config.js` from `public/config.js.example`).
+- API calls use Cognito ID tokens in `Authorization: Bearer` headers. API Gateway enforces JWT; Flask verifies JWT again and scopes all voice files to the token email.
+- `GET /synthesize` on the internal ALB is the only unauthenticated application route (health check).
+
+## Frontend
+
+- React + Vite + Tailwind. Shared button and layout classes live in `static_site/voice_clone/src/styles/globals.css`.
+- No inline styles. One axios client in `src/api/client.js`.
+
+## Backend and data
+
+- No database. Voice inputs and outputs live on the S3 CSI mount under `/mount/<email>/`.
+- Do not trust email fields from clients; use the verified JWT email only.
+
+## Architecture diagrams
+
+- Source: `architecture/diagrams/voice-clone.excalidraw`
+- Regenerate PNG/SVG: `cd architecture && npm install && npm run export`
+- Commit updated exports with infrastructure or auth changes.
+
+## Secrets
+
+- Google OAuth credentials for Cognito: `TF_VAR_cognito_google_client_id` and `TF_VAR_cognito_google_client_secret` at Terraform apply time only.

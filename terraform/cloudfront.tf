@@ -1,8 +1,47 @@
 locals {
   domain_name = "${local.environment}.${var.domain}"
+
+  cloudfront_cache_disabled_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  cloudfront_origin_request_all_viewer_except_host = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+
+  api_path_patterns = [
+    {
+      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST"]
+      path_pattern    = "input"
+      query_string    = true
+    },
+    {
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      path_pattern    = "outputs"
+      query_string    = true
+    },
+    {
+      allowed_methods = ["GET", "HEAD", "OPTIONS"]
+      path_pattern    = "outputs/*"
+      query_string    = false
+    },
+    {
+      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST"]
+      path_pattern    = "synthesize"
+      query_string    = true
+    },
+  ]
+
+  api_cache_behaviors = [
+    for pattern in local.api_path_patterns : {
+      allowed_methods          = pattern.allowed_methods
+      cache_policy_id          = local.cloudfront_cache_disabled_policy_id
+      cached_methods           = ["GET", "HEAD"]
+      compress                 = true
+      origin_request_policy_id = local.cloudfront_origin_request_all_viewer_except_host
+      path_pattern             = pattern.path_pattern
+      query_string             = pattern.query_string
+      target_origin_id         = "api_gw"
+      viewer_protocol_policy   = "redirect-to-https"
+    }
+  ]
 }
 
-# 1) Ensure you already have data.aws_route53_zone.public for var.domain
 data "aws_route53_zone" "public" {
   name         = var.domain
   private_zone = false
@@ -10,7 +49,7 @@ data "aws_route53_zone" "public" {
 
 module "cdn" {
   source  = "terraform-aws-modules/cloudfront/aws"
-  version = "~> 4.1.0"
+  version = "~> 5.2.0"
 
   aliases             = [local.domain_name]
   comment             = "${local.domain_name} Site CDN"
@@ -62,57 +101,32 @@ module "cdn" {
     query_string    = true
   }
 
-  ordered_cache_behavior = [
-    {
-      path_pattern           = "input"
-      target_origin_id       = "api_gw"
-      viewer_protocol_policy = "redirect-to-https"
+  ordered_cache_behavior = concat(
+    local.api_cache_behaviors,
+    [
+      {
+        allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+        cached_methods         = ["GET", "HEAD"]
+        compress               = true
+        path_pattern           = "*"
+        query_string           = true
+        target_origin_id       = "s3_primary"
+        viewer_protocol_policy = "redirect-to-https"
+      },
+    ],
+  )
 
-      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT", "PATCH"]
-      cached_methods  = ["GET", "HEAD"]
-      compress        = true
-      query_string    = true
+  custom_error_response = [
+    {
+      error_code         = 403
+      response_code      = 200
+      response_page_path = "/index.html"
     },
     {
-      path_pattern           = "outputs"
-      target_origin_id       = "api_gw"
-      viewer_protocol_policy = "redirect-to-https"
-
-      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT", "PATCH"]
-      cached_methods  = ["GET", "HEAD"]
-      compress        = true
-      query_string    = true
+      error_code         = 404
+      response_code      = 200
+      response_page_path = "/index.html"
     },
-    {
-      path_pattern           = "outputs/*"
-      target_origin_id       = "api_gw"
-      viewer_protocol_policy = "redirect-to-https"
-
-      allowed_methods = ["GET", "HEAD", "OPTIONS"]
-      cached_methods  = ["GET", "HEAD"]
-      compress        = true
-      query_string    = false
-    },
-    {
-      path_pattern           = "synthesize"
-      target_origin_id       = "api_gw"
-      viewer_protocol_policy = "redirect-to-https"
-
-      allowed_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT", "PATCH"]
-      cached_methods  = ["GET", "HEAD"]
-      compress        = true
-      query_string    = true
-    },
-    {
-      path_pattern           = "*"
-      target_origin_id       = "s3_primary"
-      viewer_protocol_policy = "redirect-to-https"
-
-      allowed_methods = ["GET", "HEAD", "OPTIONS"]
-      cached_methods  = ["GET", "HEAD"]
-      compress        = true
-      query_string    = true
-    }
   ]
 
   viewer_certificate = {

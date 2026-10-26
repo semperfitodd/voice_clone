@@ -7,7 +7,7 @@ data "aws_ecr_image" "latest" {
 
 module "ecr" {
   source  = "terraform-aws-modules/ecr/aws"
-  version = "~> 2.4.0"
+  version = "~> 3.2.0"
 
   for_each = var.ecr_repos
 
@@ -40,6 +40,7 @@ resource "null_resource" "build_and_push_image" {
 
   triggers = {
     app_py_hash     = filesha256("../docker/${each.key}/app.py")
+    auth_py_hash    = filesha256("../docker/${each.key}/auth.py")
     dockerfile_hash = filesha256("../docker/${each.key}/Dockerfile")
   }
 

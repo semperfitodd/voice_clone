@@ -2,7 +2,7 @@ data "aws_availability_zones" "main" {}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.21.0"
+  version = "~> 6.7.3"
 
   name = var.environment
 
@@ -41,7 +41,7 @@ module "vpc" {
 
 module "vpc_endpoints" {
   source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
-  version = "~> 5.21.0"
+  version = "~> 6.7.3"
 
   vpc_id = module.vpc.vpc_id
   tags   = var.tags

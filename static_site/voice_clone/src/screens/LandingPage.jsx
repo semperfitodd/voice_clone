@@ -1,116 +1,91 @@
-import React, { useState, useEffect } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
-import VoiceClone from './VoiceClone';
-import axios from 'axios';
+import React, { useCallback, useEffect, useState } from "react";
 
-const API_KEY = import.meta.env.VITE_TTS_API_KEY;
+import apiClient from "../api/client.js";
+import LoginButton from "../components/LoginButton.jsx";
+import OutputsList from "../components/OutputsList.jsx";
+import { useAuth } from "../contexts/AuthContext.jsx";
+import { recordingsComplete } from "../utils/recordings.js";
+import VoiceClone from "./VoiceClone.jsx";
 
-export default function LandingPage({ email, setEmail }) {
+export default function LandingPage() {
+  const { email, isAuthenticated, logout } = useAuth();
   const [showCloneFlow, setShowCloneFlow] = useState(false);
   const [showTtsFlow, setShowTtsFlow] = useState(false);
-  const [ttsText, setTtsText] = useState('');
+  const [ttsText, setTtsText] = useState("");
   const [requestSent, setRequestSent] = useState(false);
   const [outputs, setOutputs] = useState([]);
   const [blobUrls, setBlobUrls] = useState({});
 
-  useEffect(() => {
-    setTtsText('');
-    setRequestSent(false);
-    setOutputs([]);
-    setBlobUrls({});
-    if (email) {
-      fetchOutputs();
-    }
-  }, [email]);
+  const allRecordingsDone = useCallback(() => recordingsComplete(email), [email]);
 
-  const handleCloneFinish = () => {
-    setShowCloneFlow(false);
-  };
-
-  const recordingsComplete = () => {
-    if (!email) return false;
-    for (let i = 0; i < 5; i++) {
-      const key = `voiceclone_${email}_${i}`;
-      if (localStorage.getItem(key) !== 'true') return false;
-    }
-    return true;
-  };
-
-  const fetchOutputs = async () => {
+  const fetchOutputs = useCallback(async () => {
+    if (!email) return;
     try {
-      const res = await axios.get(
-        `/outputs?email=${encodeURIComponent(email)}`,
-        { headers: { 'x-api-key': API_KEY } }
-      );
+      const res = await apiClient.get("/outputs");
       setOutputs(res.data);
       const newBlobUrls = {};
       await Promise.all(
         res.data.map(async (item) => {
-          const wavResp = await axios.get(item.url, {
-            responseType: 'blob',
-            headers: { 'x-api-key': API_KEY }
-          });
+          const wavResp = await apiClient.get(item.url, { responseType: "blob" });
           newBlobUrls[item.filename] = URL.createObjectURL(wavResp.data);
-        })
+        }),
       );
       setBlobUrls(newBlobUrls);
     } catch {
       setOutputs([]);
       setBlobUrls({});
     }
+  }, [email]);
+
+  useEffect(() => {
+    setTtsText("");
+    setRequestSent(false);
+    setOutputs([]);
+    setBlobUrls({});
+    if (email) {
+      fetchOutputs();
+    }
+  }, [email, fetchOutputs]);
+
+  const handleCloneFinish = () => {
+    setShowCloneFlow(false);
   };
 
-  const sendTTSRequest = () => {
+  const sendTTSRequest = async () => {
     if (!ttsText.trim()) return;
-    axios.post(
-      '/synthesize',
-      { text: ttsText, voice: email },
-      { headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' } }
-    ).catch(() => {});
-    setRequestSent(true);
+    try {
+      await apiClient.post("/synthesize", { text: ttsText });
+      setRequestSent(true);
+    } catch {
+      setRequestSent(false);
+    }
   };
 
-  if (!email) {
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 text-center">
+      <div className="page-center bg-gray-50">
         <h1 className="text-4xl md:text-6xl font-bold mb-6">Self-hosted Text to Speech (TTS)</h1>
         <p className="text-lg md:text-xl mb-10 text-gray-600">Please sign in with Google to continue.</p>
-        <GoogleLogin
-          onSuccess={(credentialResponse) => {
-            const base64Url = credentialResponse.credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const decoded = JSON.parse(window.atob(base64));
-            setEmail(decoded.email);
-          }}
-          onError={() => {
-            alert('Google login failed. Try again.');
-          }}
-        />
+        <LoginButton />
       </div>
     );
   }
 
   if (showCloneFlow) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-        <button
-          onClick={() => setShowCloneFlow(false)}
-          className="absolute top-4 left-4 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition"
-        >
+      <div className="page-center">
+        <button type="button" className="btn btn-back" onClick={() => setShowCloneFlow(false)}>
           &larr; Back
         </button>
-        <VoiceClone userEmail={email} onFinish={handleCloneFinish} />
+        <VoiceClone onFinish={handleCloneFinish} userEmail={email} />
       </div>
     );
   }
 
   if (showTtsFlow) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-        <button
-          onClick={() => setShowTtsFlow(false)}
-          className="absolute top-4 left-4 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition"
-        >
+      <div className="page-center">
+        <button type="button" className="btn btn-back" onClick={() => setShowTtsFlow(false)}>
           &larr; Back
         </button>
         <h2 className="text-2xl font-medium mb-4">
@@ -120,138 +95,72 @@ export default function LandingPage({ email, setEmail }) {
         {!requestSent ? (
           <>
             <textarea
-              rows="4"
-              className="w-full max-w-xl p-4 border border-gray-300 rounded-lg mb-4"
-              placeholder="Enter text to synthesize..."
-              value={ttsText}
+              className="textarea-field"
               onChange={(e) => setTtsText(e.target.value)}
+              placeholder="Enter text to synthesize..."
+              rows="4"
+              value={ttsText}
             />
             <button
+              className={`btn btn-lg ${allRecordingsDone() ? "btn-success" : "btn-disabled"}`}
+              disabled={!allRecordingsDone()}
               onClick={sendTTSRequest}
-              disabled={!recordingsComplete()}
-              title={!recordingsComplete() ? 'Clone your voice first' : ''}
-              className={`px-8 py-4 text-white text-lg rounded-xl shadow-lg transition ${
-                !recordingsComplete()
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
+              title={!allRecordingsDone() ? "Clone your voice first" : ""}
+              type="button"
             >
               Generate Speech
             </button>
-            <button
-              onClick={fetchOutputs}
-              className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
+            <button className="btn btn-info mt-4" onClick={fetchOutputs} type="button">
               Refresh Outputs
             </button>
           </>
         ) : (
           <p className="text-lg text-gray-700">Request sent. Your audio will be processed soon.</p>
         )}
-        {outputs.length > 0 && (
-          <div className="mt-8 w-full max-w-2xl">
-            <h3 className="text-xl font-semibold mb-4">Available Outputs</h3>
-            <ul className="space-y-4">
-              {outputs.map((item) => {
-                const blobUrl = blobUrls[item.filename];
-                return (
-                  <li key={item.filename} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      {blobUrl ? (
-                        <audio controls src={blobUrl} />
-                      ) : (
-                        <span>Loading…</span>
-                      )}
-                      <span>{item.filename}</span>
-                    </div>
-                    {blobUrl && (
-                      <a
-                        href={blobUrl}
-                        download={item.filename}
-                        className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition"
-                      >
-                        Download
-                      </a>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+        <div className="mt-8">
+          <OutputsList blobUrls={blobUrls} outputs={outputs} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 text-center pt-16">
+    <div className="page-center bg-gray-50 pt-16">
       <h2 className="text-2xl font-medium mb-4">
         Signed in as <span className="font-bold">{email}</span>
       </h2>
+      <button className="btn btn-secondary btn-sm mb-4" onClick={logout} type="button">
+        Sign out
+      </button>
       <h1 className="text-4xl md:text-6xl font-bold mb-6">Self-hosted Text to Speech (TTS)</h1>
-      <div className="space-x-4 mb-8">
+      <div className="flex flex-wrap justify-center gap-4 mb-8">
         <button
+          className="btn btn-lg btn-primary"
           onClick={() => {
             setShowCloneFlow(true);
             setShowTtsFlow(false);
           }}
-          className="px-8 py-4 bg-purple-600 text-white text-lg rounded-xl shadow-lg hover:bg-purple-700 transition"
+          type="button"
         >
           Clone Your Voice
         </button>
         <button
+          className={`btn btn-lg ${allRecordingsDone() ? "btn-success" : "btn-disabled"}`}
+          disabled={!allRecordingsDone()}
           onClick={() => {
             setShowTtsFlow(true);
             setShowCloneFlow(false);
           }}
-          disabled={!recordingsComplete()}
-          title={!recordingsComplete() ? 'Clone your voice first' : ''}
-          className={`px-8 py-4 text-white text-lg rounded-xl shadow-lg transition ${
-            !recordingsComplete()
-              ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700'
-          }`}
+          title={!allRecordingsDone() ? "Clone your voice first" : ""}
+          type="button"
         >
           Generate Speech
         </button>
       </div>
-      <button
-        onClick={fetchOutputs}
-        className="mb-8 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-      >
+      <button className="btn btn-info mb-8" onClick={fetchOutputs} type="button">
         Check for New Outputs
       </button>
-      {outputs.length > 0 && (
-        <div className="w-full max-w-2xl">
-          <h3 className="text-xl font-semibold mb-4">Available Outputs</h3>
-          <ul className="space-y-4">
-            {outputs.map((item) => {
-              const blobUrl = blobUrls[item.filename];
-              return (
-                <li key={item.filename} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {blobUrl ? (
-                      <audio controls src={blobUrl} />
-                    ) : (
-                      <span>Loading…</span>
-                    )}
-                    <span>{item.filename}</span>
-                  </div>
-                  {blobUrl && (
-                    <a
-                      href={blobUrl}
-                      download={item.filename}
-                      className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition"
-                    >
-                      Download
-                    </a>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      <OutputsList blobUrls={blobUrls} outputs={outputs} />
     </div>
   );
 }

@@ -8,25 +8,6 @@ global:
       reclaimPolicy: Retain
       storageClassName: s3-sc
 
-ubuntuWorker:
-  name: ubuntu-worker
-  namespace: default
-  image:
-    repository: ubuntu
-    tag: "24.10"
-    pullPolicy: IfNotPresent
-
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "200m"
-      memory: "256Mi"
-
-  nodeSelector:
-    gpu: 'false'
-
 voiceGenerator:
   name: voice-generator
   namespace: tortoise
@@ -46,3 +27,8 @@ voiceGenerator:
   servicePort: 5000
 
   healthCheck: '/synthesize'
+
+  cognito:
+    clientId: ''
+    region: us-east-1
+    userPoolId: ''

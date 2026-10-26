@@ -14,9 +14,9 @@ RUN git clone https://github.com/neonbjb/tortoise-tts.git tortoise_app && \
 RUN pip install --upgrade pip && \
     pip install torch==2.1.2+cu118 torchvision --extra-index-url https://download.pytorch.org/whl/cu118 && \
     pip install -r tortoise_app/requirements.txt && \
-    pip install soundfile flask && \
+    pip install cryptography==50.0.2 flask==3.1.3 PyJWT==2.15.1 requests==2.34.2 soundfile && \
     pip install --no-deps ./tortoise_app
 
-COPY app.py /app/
+COPY app.py auth.py /app/
 
 CMD ["python", "/app/app.py"]

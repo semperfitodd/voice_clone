@@ -1,6 +1,6 @@
 module "s3_bucket_eks" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.9.0"
+  version = "~> 5.16.1"
 
   bucket = "${local.environment}-eks-${random_string.this.result}"
 
